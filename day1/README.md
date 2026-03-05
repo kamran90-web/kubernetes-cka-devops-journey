@@ -145,3 +145,41 @@ Production-ready
 
 Requires YAML knowledge
 Slightly more initial setup
+
+
+
+Commands to be used as imperative approach
+# To create a pod
+kubectl run <pod_name> --image=nginx --dry-run=client -o yaml
+
+# To set the image of a container already running
+kubectl set image pod/podName name_of_container=image_name
+
+
+
+
+kubetl run nginx --image=nginx --dry-run=client -o yaml
+kubectl create deploy --image=nginx my-deploy
+kubectl expose deployment my-deploy --port 80
+kubectl edit deployment my-deploy ----> kubectl replace --force --f<path-of-yaml>
+kubectl scale deployment my-deploy nginx --replicas=5
+kubectl set image deployment my-deploy nginx=nginx:1.18
+kubectl create -f nginx.yaml
+kubectl replace -f nginx.yaml
+kubectl delete -f nginx.yaml
+
+
+kubectl set resources deployment my-deploy --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=250Mi
+
+##create a svc named redis-src of type ClusterIp to epose pod redis on port 6379
+kubectl expose pod redis --port=6379 --name redis-svc --dry-run=client -o yaml
+
+
+#This command generates the YAML definition for a Kubernetes ClusterIP Service named redis that exposes port 6379.
+kubectl create svc clusterip redis --tcp=6379:6379 --dry-run=client -o yaml
+
+
+#Create a svc named nginx of type NodePort to expose pod nginx's port 80 on port 30080 on nodes
+kubectl expose pod nginx --type=NodePort --port=80 --name=nginx-svc --dry-run=client -o yaml
+
+#Note It will automatically use the pod's label on selector but cannot specify the node port. You have o generate a definition file and then add the nodeport in mnually before creating the svc in the pod 
