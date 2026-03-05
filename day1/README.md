@@ -1,185 +1,158 @@
-# Day 1 – Imperative vs Declarative Approach in Kubernetes
+# Day 1: Kubernetes Architecture – Control Plane & Nodes
 
-Welcome to **Day 1** of my **40 Days of Kubernetes** journey! 🚀  
-
-Today we’re learning one of the most foundational concepts in Kubernetes:  
-
-**Imperative vs Declarative Approaches**  
-
-Understanding this is essential for:  
-
-- Passing the **CKA exam**  
-- Working in production-ready Kubernetes environments  
-- Becoming a confident DevOps engineer  
+Welcome to Day 1 of the "Kubernetes Zero to Hero" series! 🚀  
+Before we start creating Pods or Deployments, it’s crucial to understand **how Kubernetes works under the hood**.
 
 ---
 
-## 🧠 What is Kubernetes?
+## **1. Kubernetes Cluster Overview**
 
-Kubernetes (K8s) is a **container orchestration platform** that automates:
+A Kubernetes cluster consists of **two main parts**:
 
-- Deployment of containerized applications  
-- Scaling and load balancing  
-- Self-healing (auto-restarting containers)  
-- Managing secrets and configuration  
+1. **Control Plane (Master components)** – The “brain” of the cluster  
+2. **Worker Nodes** – The “muscles” that run workloads (Pods/Containers)
 
-It is maintained by the **Cloud Native Computing Foundation (CNCF)**.
+**High-Level Flow:**
+User CLI / Dashboard
+|
+kube-apiserver
+|
+Controller Manager <--> etcd <--> Scheduler
+|
+Worker Nodes (kubelet + containers)
 
-> Simply put: Kubernetes makes sure your containers run the way you want, automatically.
+
 
 ---
 
-## 🔹 Imperative Approach
+## **2. Control Plane Components (Master Node)**
 
-Imperative = **command-driven**.  
-You tell Kubernetes **step by step** what to do.
+The Control Plane **maintains the desired state** of the cluster and manages scheduling, scaling, and cluster-wide decisions.  
 
-- Fast for learning and testing  
-- Useful during **CKA exam**  
-- Not ideal for production  
+### **a) kube-apiserver**
+- The **front-end of the Control Plane**  
+- Handles all REST API requests (`kubectl`, UI, CI/CD tools)  
+- Authenticates & validates requests  
+- Writes the cluster state to **etcd**  
 
-### Example 1: Create a Pod
+> Practical tip: In CKA, if pods aren’t scheduling, check API server connectivity.
 
-```bash
-kubectl run nginx-pod --image=nginx
-kubectl get pods
+---
 
-Explanation:
+### **b) etcd**
+- **Distributed key-value store** for Kubernetes state  
+- Stores **all cluster configuration and metadata**, e.g., Pods, Services, Secrets  
+- Must be backed up regularly in production  
 
-## kubectl run → creates a pod
+> Example: Deleting etcd data can destroy your cluster—CKA exam may ask about etcd backup/restore.
 
-## nginx-pod → pod name
+---
 
-## --image=nginx → container image
+### **c) kube-scheduler**
+- Assigns Pods to Worker Nodes  
+- Decides **where a Pod should run** based on:
+  - Node resources (CPU/memory)
+  - Labels & node affinity
+  - Taints & tolerations  
+- Works in the background and continuously rebalances Pods if needed
 
+---
 
+### **d) kube-controller-manager**
+- Runs **cluster controllers** as separate processes:
+  - **Node Controller:** Tracks node health
+  - **Replication Controller:** Ensures the right number of replicas
+  - **Endpoint Controller:** Populates Service endpoints
+  - **Job Controller:** Monitors completion of batch jobs
+- Ensures **desired state matches current state**
 
-## Check Details:
-kubectl describe pod nginx-pod
-kubectl logs nginx-pod
+---
 
+### **e) cloud-controller-manager (optional)**
+- Integrates with **cloud provider APIs**  
+- Manages resources like Load Balancers, Node lifecycle in cloud  
+- Only relevant for cloud-hosted clusters (AWS, GCP, Azure)
 
+---
 
+## **3. Worker Node Components**
 
+Worker nodes actually run your workloads. Each node has:
 
-## Create and Scale a Deployment
+### **a) kubelet**
+- Agent that communicates with the **Control Plane**  
+- Watches for **PodSpecs** and ensures containers are running  
+- Sends node & pod status back to API server
 
-kubectl create deployment nginx-deploy --image=nginx
-kubectl scale deployment nginx-deploy --replicas=3
-kubectl get deployments
-kubectl get pods
+### **b) kube-proxy**
+- Handles **network routing for Services**  
+- Implements **ClusterIP, NodePort, and LoadBalancer** networking  
+- Uses **iptables or IPVS** rules under the hood
 
-## Notes:
+### **c) Container Runtime**
+- Runs containers (Docker, containerd, CRI-O)  
+- Pulls container images and starts the container as defined in the PodSpec
 
-1. Imperative changes happen immediately
+---
 
-2. There is no YAML file
+## **4. How the Control Plane and Nodes Interact**
 
-3. Changes are not version-controlled.
+1. **User submits YAML** with `kubectl apply -f pod.yaml`  
+2. **API server** receives request and validates it  
+3. **Scheduler** selects the best node based on resources & constraints  
+4. **kubelet** on the selected node creates and monitors containers  
+5. **Controller manager** ensures desired state is maintained (restarts pods if needed)  
+6. **etcd** stores the authoritative state for recovery and audit
 
+---
 
-Pros
-
-1. Quick and simple
-2. Useful for debugging
-3. Time-saving for CKA exam
-
-
-Cons
-
-1. Hard to track changes
-2. Not reproducible
-3.Not suitable for production
-
-####Declarative Approach###
-
-Declarative = YAML-driven.
-You define desired state, and Kubernetes ensures the system matches it.
-
-1. Version-controlled
-2. Production-ready
-3. Supports CI/CD automation.
-
-Example Deployment YAML
-
-Create deployment.yaml:
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx-deploy
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: nginx
-  template:
-    metadata:
-      labels:
-        app: nginx
-    spec:
-      containers:
-      - name: nginx
-        image: nginx
-
-Apply It:
-kubectl apply -f deployment.yaml
-kubectl get deployments
-kubectl get pods
-
-Explanation:
-
-apiVersion: apps/v1 → version of Deployment API
-kind: Deployment → type of Kubernetes resource
-replicas: 2 → desired number of pods
-template → defines pod spec, including container image
+## **5. Diagram (Detailed View)**
 
 
-✅ Pros
+      +--------------------+
+      |     kubectl / UI   |
+      +---------+----------+
+                |
+        +-------v-------+
+        | kube-apiserver|
+        +-------+-------+
+                |
 
-Version-controlled (Git friendly)
-Reproducible and consistent
-Automatically maintains desired state
-Production-ready
 
-❌ Cons
-
-Requires YAML knowledge
-Slightly more initial setup
++----------------+----------------+
+| Controller Manager |
+| - Node Controller |
+| - Replication Controller |
+| - Job Controller |
++----------------------------------+
+|
++------v------+
+| Scheduler |
++------^------+
+|
++------v------+
+| etcd |
++------+------+
+|
+Worker Nodes (Multiple)
++----------------+----------------+
+| kubelet | kube-proxy | Container Runtime |
+| Pods/Containers running your apps |
++---------------------------------------+
 
 
 
-Commands to be used as imperative approach
-# To create a pod
-kubectl run <pod_name> --image=nginx --dry-run=client -o yaml
+---
 
-# To set the image of a container already running
-kubectl set image pod/podName name_of_container=image_name
+## **6. Key Takeaways**
 
+- **Control Plane:** The “brain” – schedules, manages, and maintains cluster state  
+- **Worker Nodes:** The “muscles” – run actual workloads (Pods/Containers)  
+- **Communication:** kubelet ↔ kube-apiserver ensures the desired state is met  
+- **etcd:** Single source of truth; critical for backup/restore  
 
+> 💡 **CKA Tip:** Most troubleshooting questions in the exam revolve around **control plane components and node health**. Knowing this architecture is essential.
 
+---
 
-kubetl run nginx --image=nginx --dry-run=client -o yaml
-kubectl create deploy --image=nginx my-deploy
-kubectl expose deployment my-deploy --port 80
-kubectl edit deployment my-deploy ----> kubectl replace --force --f<path-of-yaml>
-kubectl scale deployment my-deploy nginx --replicas=5
-kubectl set image deployment my-deploy nginx=nginx:1.18
-kubectl create -f nginx.yaml
-kubectl replace -f nginx.yaml
-kubectl delete -f nginx.yaml
-
-
-kubectl set resources deployment my-deploy --limits=cpu=200m,memory=512Mi --requests=cpu=100m,memory=250Mi
-
-##create a svc named redis-src of type ClusterIp to epose pod redis on port 6379
-kubectl expose pod redis --port=6379 --name redis-svc --dry-run=client -o yaml
-
-
-#This command generates the YAML definition for a Kubernetes ClusterIP Service named redis that exposes port 6379.
-kubectl create svc clusterip redis --tcp=6379:6379 --dry-run=client -o yaml
-
-
-#Create a svc named nginx of type NodePort to expose pod nginx's port 80 on port 30080 on nodes
-kubectl expose pod nginx --type=NodePort --port=80 --name=nginx-svc --dry-run=client -o yaml
-
-#Note It will automatically use the pod's label on selector but cannot specify the node port. You have o generate a definition file and then add the nodeport in mnually before creating the svc in the pod 
+📌 **Next Step (Day 2):** Declarative vs Imperative Approach – How to manage Kubernetes resources.
