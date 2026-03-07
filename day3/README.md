@@ -96,6 +96,8 @@ spec:
     ports:
       - containerPort: 80
 
+
+
 Create the Pod
 
 Apply the configuration:
