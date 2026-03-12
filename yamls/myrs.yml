@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  labels:
+    run: myrs
+  name: myrs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      env1: dev
+      env2: prod
+  template:
+    metadata:
+      labels:
+        env1: dev
+        env2: prod
+    spec:
+      containers:
+      - image: ubuntu:22.04
+        name: myrs
+        command: ["sleep", "3600"]
