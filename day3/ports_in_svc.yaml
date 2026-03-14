@@ -1,0 +1,100 @@
+1️⃣ containerPort
+
+Where it is defined: Inside a Pod spec (or Deployment container spec)
+
+Purpose: Indicates the port the container itself is listening on
+
+Example:
+
+containers:
+- name: nginx
+  image: nginx:latest
+  ports:
+  - containerPort: 80
+
+Effect: Kubernetes doesn’t expose this port outside the Pod automatically. It’s mainly informational for other objects (like Services or probes).
+
+✅ Use containerPort whenever you want to tell Kubernetes which port your container exposes.
+
+2️⃣ port (Service port)
+
+Where it is defined: In a Service spec
+
+Purpose: The port on which the Service itself is exposed inside the cluster
+
+Example:
+
+spec:
+  ports:
+  - port: 80          # Service port inside cluster
+    targetPort: 80
+
+Effect: Pods in the cluster can reach the Service at this port:
+
+curl http://<service-name>:port
+
+Default: If you don’t set targetPort, it uses the same value as port.
+
+3️⃣ targetPort (Service port mapping to Pod)
+
+Where it is defined: In Service spec, inside ports
+
+Purpose: Maps the Service port to the actual Pod container port
+
+Example:
+
+spec:
+  ports:
+  - port: 80
+    targetPort: 80   # containerPort of the Pod
+
+Can be number (e.g., 80) or name (if container port is named).
+
+Effect: When someone hits the Service at port, Kubernetes forwards traffic to the Pod’s targetPort.
+
+4️⃣ nodePort (only for NodePort Service)
+
+Where it is defined: In Service spec if type: NodePort
+
+Purpose: Exposes the Service on every node’s IP at this port for external access.
+
+Example:
+
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30087
+
+Effect: You can access your Service from outside the cluster at:
+
+http://<node-ip>:nodePort
+
+Range: Kubernetes only allows NodePort 30000–32767 by default.
+
+🔹 How they relate
+[External Traffic] --> nodePort (host) --> port (Service) --> targetPort (Pod) --> containerPort
+
+Example:
+
+Field	Value	Description
+containerPort	80	NGINX inside Pod listens here
+targetPort	80	Service forwards traffic to this port on Pod
+port	80	Cluster-internal Service port
+nodePort	30087	NodePort exposes Service externally on this port
+✅ Summary: When to use what
+Field	Use Case
+containerPort	Always in Pod spec; tells Kubernetes and humans what port container uses
+port	Service port for internal cluster traffic
+targetPort	Maps Service to actual container port
+nodePort	Only in NodePort Services; exposes Service externally on node
+
+💡 Tip:
+You can even have:
+
+port: 80       # cluster sees service at 80
+targetPort: 8080  # pod container listens at 8080
+nodePort: 30090  # external host access
+
+Traffic flow: nodeIP:30090 → Service 80 → Pod 8080 → containerPort 8080 ✅
