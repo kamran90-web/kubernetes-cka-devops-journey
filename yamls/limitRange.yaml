@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: my-limit
+  namespace: dev
+spec:
+  limits:
+  - min:
+      cpu: "2" 
+      memory: "1Gi"
+    max:
+      cpu: "5"
+      memory: "5Gi"
+    defaultRequest:
+      cpu: "3"
+      memory: "2Gi"
+    default:
+      cpu: "4"
+      memory: "4Gi"
+    type: "Container"
